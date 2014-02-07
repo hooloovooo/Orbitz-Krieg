@@ -10,6 +10,24 @@ window.requestAnimFrame = (function(){
 			};
 })();
 
+/*EXTEND OBJECTS*/
+var extend = function(out) {
+	out = out || {};
+
+	for (var i = 1; i < arguments.length; i++) {
+		if (!arguments[i])
+			continue;
+
+		for (var key in arguments[i]) {
+			if (arguments[i].hasOwnProperty(key))
+			out[key] = arguments[i][key];
+		}
+	}
+
+	return out;
+};
+
+
 /*
 	DIRECTIONS
 	0 = UP,
@@ -80,12 +98,13 @@ Lasers.prototype.draw = function( ctx ) {
 var Player = function( ctx ) {
 	this.lastShot = 0;
 	this.isPlayer = 1;
+	this.isAlive  = 1;
 
 	this.ctx = ctx;
-	this.engine = new Engine( this.ctx, {
+	/*this.engine = new Engine( this.ctx, {
 		position:  this.position,
 		direction: this.direction
-	});
+	});*/
 };
 Player.prototype = new Lasers();
 
@@ -110,6 +129,21 @@ Player.prototype.shoot = function() {
 		this.lastShot = new Date().getTime();
 	}
 };
+
+Player.prototype.spawn = function() {
+	this.position[0] = (this.ctx.canvas.width/2);
+	this.position[1] = (this.ctx.canvas.height/2);
+
+	this.velocity[0] = 0;
+	this.velocity[1] = 0;
+
+	this.direction = 0;
+
+	Player.isAlive = 1;
+
+
+	this.add();
+}
 
 Player.prototype.draw = function( ctx ) {
 	var posX = this.position[0],
@@ -151,24 +185,29 @@ Player.prototype.move = function( canvas ) {
 	if ( this.position[1] < 0 )
 		this.position[1] = canvas.height;
 
-	this.engine.move( this.position[0], this.position[1] );
+	//this.engine.move( this.position[0], this.position[1] );
 };
 
-Lasers.prototype.rotate = function(rad) {
+Player.prototype.rotate = function(rad) {
 	this.direction += rad.mod( 2*Math.PI );
-	this.engine.rotate( this.direction );
+	//this.engine.rotate( this.direction );
 };
+
+Player.prototype.explode = function() {
+	Player.isAlive = 0;
+	this.remove();
+}
 
 /**********************/
 /***CREATE ASTEROID****/
 /**********************/
-var Asteroid = function( canvas, args ) {
+var Asteroid = function( ctx, args ) {
 	if ( !args ) args = {};
 
-	this.canvas = canvas;
+	this.ctx = ctx;
 	this.isAsteroid = 1;
 	
-	this.position      = args.position      || [ Math.random()*canvas.width, Math.random()*canvas.height ];
+	this.position      = args.position      || [ Math.random()*ctx.canvas.width, Math.random()*ctx.canvas.height ];
 	this.velocity      = args.velocity      || [ Math.random()*1, Math.random()*1 ];
 	this.direction     = args.direction     || 0;
 	this.lifetime      = args.lifetime      || 0;
@@ -183,7 +222,7 @@ Asteroid.prototype.explode = function() {
 	currentScore += 100*this.generation+50;
 	if ( this.generation < 3 ) {
 		for ( var i = 0; i < 2; i++ ) {
-			var newa = new Asteroid(this.canvas, {
+			var newa = new Asteroid(this.ctx, {
 				position:   this.position,
 				velocity:   [ (Math.random()*2-1)*2, (Math.random()*2-1) ],
 				radius:     this.radius*0.7,
@@ -192,6 +231,9 @@ Asteroid.prototype.explode = function() {
 			newa.add();
 		}
 	}
+
+	var a = new Explosion(this.ctx, { position: this.position });
+	a.add();
 
 	this.remove();
 };
@@ -323,7 +365,7 @@ Explosion.prototype.spawn_flare = function(_opts) {
 		"time": 0
 	};
 
-	$.extend(opts, _opts);
+	extend(opts, _opts);
 
 	this.particles.push(opts);
 };
@@ -475,7 +517,6 @@ var render = function(ctx, canvas) {
 
 	for ( var i = 0, il = objects.length; i<il; il-- ) {
 		var o = objects[il-1];
-		
 		if ( o.isPlayer || o.isBullet ) {
 			for ( var k = 0, kl = objects.length; k < objects.length; k++ ) {
 				var obj = objects[k];
@@ -485,10 +526,8 @@ var render = function(ctx, canvas) {
 					var qwe=(Math.max(obj.position[1],o.position[1]) - Math.min(obj.position[1],o.position[1]));
 					
 					if ( (asd*asd+qwe*qwe) < (obj.radius*obj.radius) ) {
-						var a = new Explosion(ctx, { position: obj.position });
-						a.add();
-						
 						obj.explode();
+
 						o.remove();
 					}
 				}
@@ -496,7 +535,7 @@ var render = function(ctx, canvas) {
 		}
 
 		
-		if ( o.isPlayer ) {
+		if ( o.isPlayer && o.isAlive ) {
 			for ( var k = 0, kl = keysDown.length; k<kl; k++ ) {
 				var key = keysDown[k];
 
@@ -571,16 +610,13 @@ var Level = function( level, ctx, canvas ) {
 
 Level.prototype.addPlayer = function() {
 	var ship = new Player(this.ctx);
-	ship.position = [
-		(this.canvas.width/2),
-		(this.canvas.height/2)
-	];
-	ship.add();
+	
+	ship.spawn();
 };
 
 Level.prototype.addAsteroids = function() {
 	for ( var i = 0; i < this.level; i++ ) {
-		var asteroid = new Asteroid( this.canvas );
+		var asteroid = new Asteroid( this.ctx );
 		asteroid.add();
 	}
 };
@@ -605,13 +641,13 @@ var keyTranslate = {
 var levels = [ 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 ];
 
 
-$(function() {
+window.onload = function() {
 	var canvas = document.getElementById("canvas");
 
 	/*****************************/
 	/*********!KEYBINDINGS!*******/
 	/*****************************/
-	$(document).bind("keydown", function(ev) {
+	document.addEventListener("keydown", function(ev) {
 		for ( var i = 0, il = keysDown.length; i<il; i++ ) {
 			var key = keysDown[i];
 			if ( key == ev.keyCode ) {
@@ -621,7 +657,7 @@ $(function() {
 
 		keysDown.push(ev.keyCode);
 	});
-	$(document).bind("keyup", function(ev) {
+	document.addEventListener("keyup", function(ev) {
 		if( keysDown.length <= 1 )
 			keysDown = [];
 		
@@ -650,5 +686,4 @@ $(function() {
 	var game = new Level(3, ctx, canvas);
 	game.addPlayer();
 	game.addAsteroids();
-
-});
+}
