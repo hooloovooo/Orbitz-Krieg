@@ -46,7 +46,7 @@ var extend = function(out) {
 /****************CREATE BASE OBJ*********************/
 /***ALSO THIS IS BULLETS CAUSE BULLETS ARE SO DUMB***/
 /****************************************************/
-var Lasers = function( args ) {
+var Lasers = function( game, args ) {
 	if ( !args ) args = {};
 
 	this.position  = args.position  || [0, 0];
@@ -54,53 +54,48 @@ var Lasers = function( args ) {
 	this.direction = args.direction || 0;
 	this.lifetime  = args.lifetime  || 0;
 	this.radius    = args.radius    || 0;
-};
 
-Lasers.prototype.remove = function() {
-	objects.splice( objects.indexOf( this ), 1 );
-};
-
-Lasers.prototype.add = function() {
-	objects.push( this );
+	this.game = game;
 };
 
 Lasers.prototype.rotate = function(rad) {
 	this.direction += rad.mod( 2*Math.PI );
 };
 
-Lasers.prototype.move = function( canvas ) {
+Lasers.prototype.move = function( ctx ) {
 	this.position = [ this.position[0]+this.velocity[0], this.position[1]+this.velocity[1] ]
 	
 	/******************/
 	/**EDGE DETECTION**/
 	/******************/
-	if ( this.position[0] > canvas.width )
+	if ( this.position[0] > this.game.ctx.canvas.width )
 		this.position[0] = 0;
 	if ( this.position[0] < 0 )
-		this.position[0] = canvas.width;
-	if ( this.position[1] > canvas.height )
+		this.position[0] = this.game.ctx.canvas.width;
+	if ( this.position[1] > this.game.ctx.canvas.height )
 		this.position[1] = 0;
 	if ( this.position[1] < 0 )
-		this.position[1] = canvas.height;
+		this.position[1] = this.game.ctx.canvas.height;
 };
 
-Lasers.prototype.draw = function( ctx ) {
-	ctx.beginPath();
-	ctx.arc( this.position[0], this.position[1], this.radius, 0, Math.PI*2, true ); 
-	ctx.closePath();
-	ctx.fill();
+Lasers.prototype.draw = function() {
+	this.game.ctx.fillStyle="#dddddd";
+	this.game.ctx.beginPath();
+	this.game.ctx.arc( this.position[0], this.position[1], this.radius, 0, Math.PI*2, true ); 
+	this.game.ctx.closePath();
+	this.game.ctx.fill();
 };
 
 
 /**********************/
 /****CREATE PLAYER*****/
 /**********************/
-var Player = function( ctx ) {
+var Player = function( game ) {
 	this.lastShot = 0;
 	this.isPlayer = 1;
 	this.isAlive  = 1;
 
-	this.ctx = ctx;
+	this.game = game;
 	/*this.engine = new Engine( this.ctx, {
 		position:  this.position,
 		direction: this.direction
@@ -109,7 +104,7 @@ var Player = function( ctx ) {
 Player.prototype = new Lasers();
 
 Player.prototype.shoot = function() {
-	if ( new Date().getTime() - this.lastShot > 110 ) {	
+	if ( new Date().getTime() - this.lastShot > 10 ) {	
 
 		var position = this.position;
 		var velocity = [
@@ -118,12 +113,12 @@ Player.prototype.shoot = function() {
 		];
 		var lifetime = 60;
 		
-		new Bullet({
+		this.game.addObject(new Bullet(this.game, {
 			position: position,
 			velocity: velocity,
 			lifetime: lifetime,
 			radius: 1.5
-		}).add();
+		}));
 
 
 		this.lastShot = new Date().getTime();
@@ -131,18 +126,15 @@ Player.prototype.shoot = function() {
 };
 
 Player.prototype.spawn = function() {
-	this.position[0] = (this.ctx.canvas.width/2);
-	this.position[1] = (this.ctx.canvas.height/2);
+	this.position[0] = (this.game.ctx.canvas.width/2);
+	this.position[1] = (this.game.ctx.canvas.height/2);
 
 	this.velocity[0] = 0;
 	this.velocity[1] = 0;
 
 	this.direction = 0;
 
-	Player.isAlive = 1;
-
-
-	this.add();
+	this.isAlive = 1;
 }
 
 Player.prototype.draw = function( ctx ) {
@@ -156,11 +148,12 @@ Player.prototype.draw = function( ctx ) {
 	var Dsin = Math.sin( this.direction );
 	var Dcos = Math.cos( this.direction );
 
-	ctx.beginPath();
-	ctx.moveTo( p0x*Dcos - p0y*Dsin + posX, p0y*Dcos + p0x*Dsin + posY );
-	ctx.lineTo( p1x*Dcos - p1y*Dsin + posX, p1y*Dcos + p1x*Dsin + posY );
-	ctx.lineTo( p2x*Dcos - p1y*Dsin + posX, p2y*Dcos + p2x*Dsin + posY );
-	ctx.fill();
+	this.game.ctx.fillStyle="#dddddd";
+	this.game.ctx.beginPath();
+	this.game.ctx.moveTo( p0x*Dcos - p0y*Dsin + posX, p0y*Dcos + p0x*Dsin + posY );
+	this.game.ctx.lineTo( p1x*Dcos - p1y*Dsin + posX, p1y*Dcos + p1x*Dsin + posY );
+	this.game.ctx.lineTo( p2x*Dcos - p1y*Dsin + posX, p2y*Dcos + p2x*Dsin + posY );
+	this.game.ctx.fill();
 };
 
 Player.prototype.accelerate = function( force ) {
@@ -170,20 +163,20 @@ Player.prototype.accelerate = function( force ) {
 	];
 };
 
-Player.prototype.move = function( canvas ) {
+Player.prototype.move = function( ) {
 	this.position = [ this.position[0]+this.velocity[0], this.position[1]+this.velocity[1] ]
 	
 	/******************/
 	/**EDGE DETECTION**/
 	/******************/
-	if ( this.position[0] > canvas.width )
+	if ( this.position[0] > this.game.ctx.canvas.width )
 		this.position[0] = 0;
 	if ( this.position[0] < 0 )
-		this.position[0] = canvas.width;
-	if ( this.position[1] > canvas.height )
+		this.position[0] = this.game.ctx.canvas.width;
+	if ( this.position[1] > this.game.ctx.canvas.height )
 		this.position[1] = 0;
 	if ( this.position[1] < 0 )
-		this.position[1] = canvas.height;
+		this.position[1] = this.game.ctx.canvas.height;
 
 	//this.engine.move( this.position[0], this.position[1] );
 };
@@ -194,20 +187,19 @@ Player.prototype.rotate = function(rad) {
 };
 
 Player.prototype.explode = function() {
-	Player.isAlive = 0;
-	this.remove();
+	this.isAlive = 0;
 }
 
 /**********************/
 /***CREATE ASTEROID****/
 /**********************/
-var Asteroid = function( ctx, args ) {
+var Asteroid = function( game, args ) {
 	if ( !args ) args = {};
 
-	this.ctx = ctx;
+	this.game = game;
 	this.isAsteroid = 1;
 	
-	this.position      = args.position      || [ Math.random()*ctx.canvas.width, Math.random()*ctx.canvas.height ];
+	this.position      = args.position      || [ Math.random()*game.ctx.canvas.width, Math.random()*game.ctx.canvas.height ];
 	this.velocity      = args.velocity      || [ Math.random()*1, Math.random()*1 ];
 	this.direction     = args.direction     || 0;
 	this.lifetime      = args.lifetime      || 0;
@@ -219,30 +211,32 @@ var Asteroid = function( ctx, args ) {
 Asteroid.prototype = new Lasers();
 
 Asteroid.prototype.explode = function() {
-	currentScore += 100*this.generation+50;
+	
+	this.game.score += 100*this.generation+50;
+
 	if ( this.generation < 3 ) {
 		for ( var i = 0; i < 2; i++ ) {
-			var newa = new Asteroid(this.ctx, {
+			var newa = new Asteroid(this.game, {
 				position:   this.position,
 				velocity:   [ (Math.random()*2-1)*2, (Math.random()*2-1) ],
 				radius:     this.radius*0.7,
 				generation: this.generation+1
 			});
-			newa.add();
+			
+			this.game.addObject(newa);
 		}
 	}
 
-	var a = new Explosion(this.ctx, { position: this.position });
-	a.add();
+	this.game.addEffect( new Explosion(this.game, { position: this.position }) );
 
-	this.remove();
+	this.game.removeObject(this);
 };
 
 
 /**********************/
 /****CREATE BULLET*****/
 /**********************/
-var Bullet = function( args ) {
+var Bullet = function( game, args ) {
 	if ( !args ) args = {};
 
 	this.position  = args.position  || [0, 0];
@@ -251,6 +245,8 @@ var Bullet = function( args ) {
 	this.lifetime  = args.lifetime  || 0;
 	this.radius    = args.radius    || 0;
 	this.isBullet = 1;
+
+	this.game = game;
 
 };
 
@@ -261,29 +257,31 @@ Bullet.prototype = new Lasers();
 /******TEXTADDER******/
 /*********************/
 
-var Text = function( args ) {
+var Text = function( game, args ) {
 	if ( !args ) args = {};
 	
-	this.position      = args.position      || [ args.canvas.width, args.canvas.height ];
+	this.position      = args.position      || [ game.ctx.canvas.width/2, game.ctx.canvas.height/2 ];
 	this.lifetime      = args.lifetime      || 0;
 	this.radius        = args.radius        || Math.random()*30+20;
 	this.generation    = args.generation    || 0;
-	this.canvas        = args.canvas        || undefined;
-	this.ctx           = args.ctx           || undefined;
-	this.text          = args.text      || "Dummy";
+	this.font          = args.font          || 'bold 50px arial';
+	this.textAlign     = args.textAlign     || 'center';
+	this.text          = args.text;
+
+	this.game = game;
 
 };
 
 Text.prototype = new Lasers();
 
 Text.prototype.draw = function() {
-	this.ctx.save();
-	this.ctx.fillStyle    = '#444';
-	this.ctx.font         = 'bold 50px arial';
-	this.ctx.textBaseline = 'middle';
-	this.ctx.textAlign    = "center"
-	this.ctx.fillText(this.text, this.canvas.width/2, this.canvas.height/2);
-	this.ctx.restore();
+	this.game.ctx.save();
+	this.game.ctx.fillStyle    = '#aaaaaa';
+	this.game.ctx.font         = this.font;
+	this.game.ctx.textBaseline = 'middle';
+	this.game.ctx.textAlign    = this.textAlign;
+	this.game.ctx.fillText(this.text, this.position[0], this.position[1]);
+	this.game.ctx.restore();
 }
 
 
@@ -318,7 +316,7 @@ Particle.prototype.add = function() {
 /*****EXPLOSIONS*****/
 /********************/
 
-var Explosion = function( ctx, args ) {
+var Explosion = function( game, args ) {
 	if ( !args ) args = {};
 
 	this.position  = args.position  || [0, 0];
@@ -327,7 +325,7 @@ var Explosion = function( ctx, args ) {
 	this.lifetime  = args.lifetime  || 0;
 	this.radius    = args.radius    || 0;
 	
-	this.ctx = ctx;
+	this.game = game;
 	
 	this.particles = [];
 
@@ -371,50 +369,50 @@ Explosion.prototype.spawn_flare = function(_opts) {
 };
 
 Explosion.prototype.draw = function() {
-	this.ctx.save();
+	this.game.ctx.save();
 	
 	if ( this.particles.length <= 0 ) this.remove();
 	
 	for (var i = 0, l = this.particles.length; i < l; i++) {
 		var f = this.particles[i];
 	
-		this.ctx.globalCompositeOperation = "lighter";
+		this.game.ctx.globalCompositeOperation = "lighter";
 
-		this.ctx.fillStyle = f.color;
+		this.game.ctx.fillStyle = f.color;
 
 		var s = f.size * ((f.life - f.time) / f.life);
 
 		if (s < 10) {
-			this.ctx.globalAlpha = f.alpha;
+			this.game.ctx.globalAlpha = f.alpha;
 
 			for (var n = 1; n < s; n++) {
-				this.ctx.beginPath();
-				this.ctx.arc(f.x, f.y, n, 0, Math.PI*2);
-				this.ctx.fill();
+				this.game.ctx.beginPath();
+				this.game.ctx.arc(f.x, f.y, n, 0, Math.PI*2);
+				this.game.ctx.fill();
 			}
 		}
 		else if (s < 40) {
 			var nl = s - 8;
 			if (nl < 1) nl = 1;
 
-			this.ctx.globalAlpha = f.alpha * 2;
+			this.game.ctx.globalAlpha = f.alpha * 2;
 
 			for (var n = nl; n < s; n += 2) {
-				this.ctx.beginPath();
-				this.ctx.arc(f.x, f.y, n, 0, Math.PI*2);
-				this.ctx.fill();
+				this.game.ctx.beginPath();
+				this.game.ctx.arc(f.x, f.y, n, 0, Math.PI*2);
+				this.game.ctx.fill();
 			}
 		}
 		else {
 			var nl = s - 4;
 			if (nl < 1) nl = 1;
 
-			this.ctx.globalAlpha = f.alpha * 4;
+			this.game.ctx.globalAlpha = f.alpha * 4;
 
 			for (var n = nl; n < s; n += 4) {
-				this.ctx.beginPath();
-				this.ctx.arc(f.x, f.y, n, 0, Math.PI*2);
-				this.ctx.fill();
+				this.game.ctx.beginPath();
+				this.game.ctx.arc(f.x, f.y, n, 0, Math.PI*2);
+				this.game.ctx.fill();
 			}
 		}
 
@@ -425,9 +423,9 @@ Explosion.prototype.draw = function() {
 		}
 	}
 
-	this.ctx.globalCompositeOperation = "source-over";
-	this.ctx.globalAlpha = 1.0;
-	this.ctx.restore();
+	this.game.ctx.globalCompositeOperation = "source-over";
+	this.game.ctx.globalAlpha = 1.0;
+	this.game.ctx.restore();
 };
 
 /********************/
@@ -500,124 +498,216 @@ Engine.prototype.draw = function() {
 /*************/
 Number.prototype.mod = function( x ) { return ((this % x) + x) % x; }
 
+/****************************/
+/****THE ACTUAL GAME??!?!!***/
+/****************************/
 
-/************/
-/***STUFFS***/
-/************/
+var Game = function( ctx ) {
+	this.ctx = ctx;
 
-var render = function(ctx, canvas) {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	this.score = 0;
+	this.level = 0;
 
-	if ( objects.length == 1 ) {
-		currentLevel++;
-		var game = new Level(levels[currentLevel], ctx, canvas);
-		game.addPlayer();
-		game.addAsteroids();
-	}
+	this.player = 0;
+	this.levels = [ 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 ];
 
-	for ( var i = 0, il = objects.length; i<il; il-- ) {
-		var o = objects[il-1];
-		if ( o.isPlayer || o.isBullet ) {
-			for ( var k = 0, kl = objects.length; k < objects.length; k++ ) {
-				var obj = objects[k];
+	this.objects = [];
+	this.effects = [];
 
-				if ( obj.isAsteroid ) {
-					var asd=(Math.max(obj.position[0],o.position[0]) - Math.min(obj.position[0],o.position[0]));
-					var qwe=(Math.max(obj.position[1],o.position[1]) - Math.min(obj.position[1],o.position[1]));
-					
-					if ( (asd*asd+qwe*qwe) < (obj.radius*obj.radius) ) {
-						obj.explode();
+	this.asteroidsAlive = 0;
 
-						o.remove();
+	this.init();
+}
+
+Game.prototype = {
+	init: function() {
+		this.player = new Player(this);
+
+		this.progress();
+	},
+	reset: function() {
+		this.score = 0;
+		this.level = 0;
+
+		this.player;
+
+		this.objects = [];
+		this.effects = [];
+
+		this.asteroidsAlive = 0;
+
+		this.init();
+
+		console.log("derp");
+	},
+	end: function() {
+		this.addObject(new Text(this, {
+			text: "You died! Your score was " + this.score + ".",
+			canvas: this.ctx.canvas,
+			font: 'bold 30px arial'
+		}));
+
+		this.addObject(new Text(this, {
+			text: "Press SPACE to restart.",
+			canvas: this.ctx.canvas,
+			position: [this.ctx.canvas.width/2, this.ctx.canvas.height/2+50]
+		}));
+
+		this.player = 0;
+	},
+	progress: function() {
+		this.level = ++this.level;
+
+		this.player.spawn();
+
+		this.addObject(new Text(this, {
+			text: "Level " + +(this.level),
+			ctx: this.ctx,
+			canvas: this.ctx.canvas,
+			lifetime: 50
+		}));
+		
+
+		this.spawnAsteroids();
+		this.asteroidsAlive = 1;
+
+	},
+	spawnAsteroids: function() {
+		for ( var i = 0; i < this.levels[this.level]; i++ ) {
+			this.addObject(new Asteroid( this ));
+		}
+	},
+	addObject: function( obj ) {
+		this.objects.push(obj);
+	},
+	addEffect: function( eff ) {
+		this.effects.push(eff);
+	},
+	removeObject: function( obj ) {
+		this.objects.splice( this.objects.indexOf( obj ), 1 );
+	},
+	removeEffect: function( eff ) {
+		this.effects.splice( this.effects.indexOf( eff ), 1 );
+	},
+	render: function() {
+		this.ctx.fillStyle="#222";
+		this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+
+		if ( this.player ) {
+			for ( var k = 0, kl = keysDown.length; k<kl; k++ ) {
+				var key = keysDown[k];
+
+				if ( key == keyTranslate["LEFT"] )
+					this.player.rotate( -0.07 );
+				else if ( key == keyTranslate["RIGHT"] )
+					this.player.rotate( 0.07 );
+
+				if ( key == keyTranslate["UP"] )
+					this.player.accelerate( 0.008 );
+
+				if ( key == keyTranslate["SPACE"] )
+					this.player.shoot();
+			}
+		} else {
+			for ( var k = 0, kl = keysDown.length; k<kl; k++ ) {
+				var key = keysDown[k];
+
+				if ( key == keyTranslate["SPACE"] )
+					this.reset();
+			}
+		}
+
+
+		if ( this.player ) {
+			this.player.draw();
+			this.player.move();
+		}
+
+		this.asteroidsAlive = 0;
+		//Do all the stuffs to all the objects.
+		for ( var objLen = this.objects.length; 0 < objLen; objLen-- ) {
+			var obj = this.objects[objLen-1];
+			if ( !obj ) continue;
+
+			if ( obj.isBullet ) {
+
+				//We have to go through all the objects again and see if we hit one of them.
+				for ( var ol = this.objects.length; 0 < ol; ol-- ) {
+					var asteroid = this.objects[ol-1];
+					if ( !asteroid ) continue;
+
+					//Just the asteroids tho.
+					if ( asteroid.isAsteroid ) {
+						if ( this.findCollision(asteroid, obj) ) asteroid.explode();
+					}
+				}
+			}
+
+			if ( obj.isAsteroid ) {
+				this.asteroidsAlive = 1;
+			}
+
+
+			obj.draw();
+			obj.move();
+			
+
+			if ( obj.lifetime ) {
+				if ( obj.lifetime == 1 ) {
+					this.objects.splice(objLen-1, 1);
+				}
+				else
+					obj.lifetime--;
+			}
+		}
+
+		for ( var eff = 0, effLen = this.effects.length; eff < effLen; effLen-- ) {
+			var effect = this.effects[effLen-1];
+
+			effect.draw();
+		}
+
+		if ( this.player ) {
+
+			for ( var ol = this.objects.length; 0 < ol; ol-- ) {
+				var asteroid = this.objects[ol-1];
+				if ( !asteroid ) continue;
+
+				//Just the asteroids tho.
+				if ( asteroid.isAsteroid ) {
+					if ( this.findCollision(asteroid, this.player) ) {
+						asteroid.explode();
+						this.player.explode();
+						this.end();
+
+						break;
 					}
 				}
 			}
 		}
 
+
+		var scoreText = new Text(this, {
+			text: this.score,
+			font: "14px arial",
+			position: [10, 10],
+			textAlign: "left"
+		});
+
+		scoreText.draw();
+
+		if ( !this.asteroidsAlive ) this.progress();
+	},
+
+	findCollision: function( obj1, obj2 ) {
+		var asd=(Math.max(obj1.position[0],obj2.position[0]) - Math.min(obj1.position[0],obj2.position[0]));
+		var qwe=(Math.max(obj1.position[1],obj2.position[1]) - Math.min(obj1.position[1],obj2.position[1]));
 		
-		if ( o.isPlayer && o.isAlive ) {
-			for ( var k = 0, kl = keysDown.length; k<kl; k++ ) {
-				var key = keysDown[k];
-
-				if ( key == keyTranslate["LEFT"] )
-					o.rotate( -0.07 );
-				else if ( key == keyTranslate["RIGHT"] )
-					o.rotate( 0.07 );
-
-				if ( key == keyTranslate["UP"] )
-					o.accelerate( 0.008 );
-				
-				if ( key == keyTranslate["SPACE"] )
-						o.shoot();
-			}
+		if ( (asd*asd+qwe*qwe) < (obj1.radius*obj1.radius) ) {
+			return true;
 		}
 
-
-		//Update position
-		o.move(canvas);
-
-		//Draw this object
-		o.draw(ctx);
-
-
-		/******************/
-		/***DRAW SCORE*****/
-		/******************/
-		ctx.save();
-		ctx.fillStyle    = '#444';
-		ctx.font         = '20px arial';
-		ctx.textBaseline = 'top';
-		ctx.textAlign    = "left"
-		ctx.fillText(currentScore, 10, 10);
-		ctx.restore();
-
-		/****************************/
-		/***REMOVE EXPIRED OBJECTS***/
-		/****************************/
-
-		if ( o.lifetime ) {
-			if ( o.lifetime == 1 ) {
-				objects.splice(il-1, 1);
-			}
-			else
-				o.lifetime--;
-		}
-	}
-	
-	for ( var i = 0, il = effects.length; i<il; il-- ) {
-		var e = effects[il-1];
-		
-		e.draw();
-	}
-}
-
-
-/****************************/
-/****GAME HELPER FUNCTIONS***/
-/****************************/
-
-var Level = function( level, ctx, canvas ) {
-	objects = [];
-	effects = [];
-
-	this.ctx = ctx;
-	this.canvas = canvas;
-	this.level = level;
-
-	var a = new Text({ text: "Level " + +(currentLevel+1), ctx: ctx, canvas: canvas, lifetime: 50 });
-	a.add();
-};
-
-Level.prototype.addPlayer = function() {
-	var ship = new Player(this.ctx);
-	
-	ship.spawn();
-};
-
-Level.prototype.addAsteroids = function() {
-	for ( var i = 0; i < this.level; i++ ) {
-		var asteroid = new Asteroid( this.ctx );
-		asteroid.add();
+		return false;
 	}
 };
 
@@ -627,8 +717,6 @@ Level.prototype.addAsteroids = function() {
 var keysDown = [];
 var objects = [];
 var effects = [];
-var currentLevel = 0;
-var currentScore = 0;
 
 var keyTranslate = {
 	"RIGHT": 39,
@@ -637,8 +725,6 @@ var keyTranslate = {
 	"UP":    38,
 	"SPACE": 32
 };
-
-var levels = [ 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 ];
 
 
 window.onload = function() {
@@ -673,17 +759,16 @@ window.onload = function() {
 	if ( canvas.getContext("2d") ) {
 		var ctx = canvas.getContext("2d");
 
+		var game = new Game(ctx);
+		
 
 		(function animloop(){
 			requestAnimFrame( animloop );
-			render( ctx, canvas );
+			game.render( ctx );
 		})();
 	}
 
 	/************************/
 	/*******START GAME*******/
 	/************************/
-	var game = new Level(3, ctx, canvas);
-	game.addPlayer();
-	game.addAsteroids();
 }
