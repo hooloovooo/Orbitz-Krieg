@@ -104,14 +104,14 @@ var Player = function( game ) {
 Player.prototype = new Lasers();
 
 Player.prototype.shoot = function() {
-	if ( new Date().getTime() - this.lastShot > 10 ) {	
+	if ( new Date().getTime() - this.lastShot > 250 ) {	
 
 		var position = this.position;
 		var velocity = [
-			this.velocity[0] +(Math.sin( this.direction )*5),
-			this.velocity[1] -(Math.cos( this.direction )*5)
+			this.velocity[0] +(Math.sin( this.direction )*3),
+			this.velocity[1] -(Math.cos( this.direction )*3)
 		];
-		var lifetime = 60;
+		var lifetime = 80;
 		
 		this.game.addObject(new Bullet(this.game, {
 			position: position,
@@ -157,10 +157,22 @@ Player.prototype.draw = function( ctx ) {
 };
 
 Player.prototype.accelerate = function( force ) {
-	this.velocity = [
+
+	var velocity = [
 		this.velocity[0] + Math.sin(this.direction)*force,
 		this.velocity[1] -(Math.cos(this.direction)*force)
 	];
+
+	var vecLengthSquared = (velocity[0]) * (velocity[0]) + (velocity[1]) * (velocity[1]);
+
+	//console.log(vecLength);
+	if ( vecLengthSquared > 1.2 * 1.2 && vecLengthSquared > 0 ) {
+		var ratio = 1.2 / Math.sqrt(vecLengthSquared);
+
+		velocity[0] = velocity[0] * ratio;
+		velocity[1] = velocity[1] * ratio;
+	}
+	this.velocity = velocity;
 };
 
 Player.prototype.move = function( ) {
@@ -232,6 +244,15 @@ Asteroid.prototype.explode = function() {
 	this.game.removeObject(this);
 };
 
+Asteroid.prototype.draw = function() {
+	this.game.ctx.fillStyle="#666666";
+	this.game.ctx.beginPath();
+	this.game.ctx.arc( this.position[0], this.position[1], this.radius, 0, Math.PI*2, true ); 
+	this.game.ctx.closePath();
+	this.game.ctx.fill();
+};
+
+
 
 /**********************/
 /****CREATE BULLET*****/
@@ -251,6 +272,34 @@ var Bullet = function( game, args ) {
 };
 
 Bullet.prototype = new Lasers();
+
+Bullet.prototype.draw = function() {
+	/*this.game.ctx.fillStyle="#dddddd";
+	this.game.ctx.beginPath();
+	this.game.ctx.arc( this.position[0], this.position[1], this.radius, 0, Math.PI*2, true ); 
+	this.game.ctx.closePath();
+	this.game.ctx.fill();
+	*/
+	this.game.ctx.save();
+	var radius = Math.random()*4+31;
+
+	var x = this.position[0],
+		y = this.position[1];
+
+	var bx = x;
+	var by = y;
+
+	var radgrad = this.game.ctx.createRadialGradient( bx, by, 1.2+Math.random()*1.5, bx, by, 3+Math.random()*2 );
+	radgrad.addColorStop(0,   'rgba(200,220,255,1)');
+	//radgrad.addColorStop(0.4, 'rgba(266,150,255,.9)');
+	radgrad.addColorStop(1,   'rgba(255,255,255,0)');
+
+	// draw shape
+	this.game.ctx.fillStyle = radgrad;
+	this.game.ctx.fillRect(bx, by, 5, 5);
+
+	this.game.ctx.restore();
+};
 
 
 /*********************/
@@ -603,7 +652,7 @@ Game.prototype = {
 					this.player.rotate( 0.07 );
 
 				if ( key == keyTranslate["UP"] )
-					this.player.accelerate( 0.008 );
+					this.player.accelerate( 0.03 );
 
 				if ( key == keyTranslate["SPACE"] )
 					this.player.shoot();
@@ -638,7 +687,10 @@ Game.prototype = {
 
 					//Just the asteroids tho.
 					if ( asteroid.isAsteroid ) {
-						if ( this.findCollision(asteroid, obj) ) asteroid.explode();
+						if ( this.findCollision(asteroid, obj) ) {
+							asteroid.explode();
+							this.removeObject(obj);
+						}
 					}
 				}
 			}
